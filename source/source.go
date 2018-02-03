@@ -71,7 +71,7 @@ func getTTLFromAnnotations(annotations map[string]string) (endpoint.TTL, error) 
 	return endpoint.TTL(ttlValue), nil
 }
 
-func getProviderAnnotations(annotations map[string]string) (map[string]string) {
+func getProviderAnnotations(annotations map[string]string) map[string]string {
 	providerAnnotations := map[string]string{}
 
 	for annotationKey, annotationValue := range annotations {

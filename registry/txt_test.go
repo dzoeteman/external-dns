@@ -348,12 +348,12 @@ func testTXTRegistryApplyChangesNoPrefix(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func testAddTxtRecordsFromEndpoint(t *testing.T){
+func testAddTxtRecordsFromEndpoint(t *testing.T) {
 	p := provider.NewInMemoryProvider()
 	r, _ := NewTXTRegistry(p, "", "owner")
 
 	privateEndpoint := newEndpointWithOwner("foo.test-zone.example.org", "foo.loadbalancer.com", endpoint.RecordTypeCNAME, "")
-	privateEndpoint.ProviderAnnotations = map[string]string{"foo":"bar"}
+	privateEndpoint.ProviderAnnotations = map[string]string{"foo": "bar"}
 
 	changes := &plan.Changes{
 		Create: []*endpoint.Endpoint{

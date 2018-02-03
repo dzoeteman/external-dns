@@ -62,11 +62,11 @@ func NewEndpoint(dnsName, target, recordType string) *Endpoint {
 // NewEndpointWithTTL initialization method to be used to create an endpoint with a TTL struct
 func NewEndpointWithTTL(dnsName, target, recordType string, ttl TTL) *Endpoint {
 	return &Endpoint{
-		DNSName:    strings.TrimSuffix(dnsName, "."),
-		Target:     strings.TrimSuffix(target, "."),
-		RecordType: recordType,
-		Labels:     NewLabels(),
-		RecordTTL:  ttl,
+		DNSName:             strings.TrimSuffix(dnsName, "."),
+		Target:              strings.TrimSuffix(target, "."),
+		RecordType:          recordType,
+		Labels:              NewLabels(),
+		RecordTTL:           ttl,
 		ProviderAnnotations: map[string]string{},
 	}
 }

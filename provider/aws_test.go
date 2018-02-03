@@ -819,11 +819,11 @@ func TestFilterZones(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		filters  []func(zone *route53.HostedZone) (bool)
+		filters  []func(zone *route53.HostedZone) bool
 		expected []*route53.HostedZone
 	}{
-		{[]func(zone *route53.HostedZone) (bool){}, []*route53.HostedZone{zones["example-org"], zones["example-org-private"]}},
-		{[]func(zone *route53.HostedZone) (bool){func(zone *route53.HostedZone) bool {
+		{[]func(zone *route53.HostedZone) bool{}, []*route53.HostedZone{zones["example-org"], zones["example-org-private"]}},
+		{[]func(zone *route53.HostedZone) bool{func(zone *route53.HostedZone) bool {
 			filter := NewZoneTypeFilter("private")
 			return filter.Match(zone)
 		}}, []*route53.HostedZone{zones["example-org-private"]}},

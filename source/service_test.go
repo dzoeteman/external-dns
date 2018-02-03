@@ -26,10 +26,10 @@ import (
 
 	"github.com/kubernetes-incubator/external-dns/endpoint"
 
+	"github.com/kubernetes-incubator/external-dns/provider"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"github.com/kubernetes-incubator/external-dns/provider"
 )
 
 type ServiceSuite struct {
@@ -764,7 +764,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 			"",
 			map[string]string{},
 			map[string]string{
-				hostnameAnnotationKey: "foo.example.org.",
+				hostnameAnnotationKey:          "foo.example.org.",
 				provider.AWSZoneTypeAnnotation: "private",
 			},
 			"",
@@ -785,7 +785,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 			"",
 			map[string]string{},
 			map[string]string{
-				hostnameAnnotationKey: "foo.example.org.",
+				hostnameAnnotationKey:          "foo.example.org.",
 				provider.AWSZoneTypeAnnotation: "private",
 			},
 			"",
@@ -922,7 +922,7 @@ func TestClusterIpServices(t *testing.T) {
 			"",
 			map[string]string{},
 			map[string]string{
-				hostnameAnnotationKey: "foo.example.org.",
+				hostnameAnnotationKey:          "foo.example.org.",
 				provider.AWSZoneTypeAnnotation: "private",
 			},
 			"1.2.3.4",
@@ -1074,7 +1074,7 @@ func TestHeadlessServices(t *testing.T) {
 			"",
 			map[string]string{"component": "foo"},
 			map[string]string{
-				hostnameAnnotationKey: "service.example.org",
+				hostnameAnnotationKey:          "service.example.org",
 				provider.AWSZoneTypeAnnotation: "private",
 			},
 			v1.ClusterIPNone,

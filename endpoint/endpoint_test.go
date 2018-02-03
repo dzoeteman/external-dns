@@ -17,8 +17,8 @@ limitations under the License.
 package endpoint
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestNewEndpoint(t *testing.T) {

@@ -53,7 +53,7 @@ func validateEndpoint(t *testing.T, endpoint, expected *endpoint.Endpoint) {
 		t.Errorf("expected %s, got %s", expected.RecordType, endpoint.RecordType)
 	}
 
-	if expected.ProviderAnnotations != nil && ! reflect.DeepEqual(endpoint.ProviderAnnotations, expected.ProviderAnnotations) {
+	if expected.ProviderAnnotations != nil && !reflect.DeepEqual(endpoint.ProviderAnnotations, expected.ProviderAnnotations) {
 		t.Errorf("expected %s, got %s", expected.ProviderAnnotations, endpoint.ProviderAnnotations)
 	}
 }

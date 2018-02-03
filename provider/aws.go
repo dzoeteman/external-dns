@@ -83,7 +83,7 @@ type AWSProvider struct {
 
 type endpointChange struct {
 	endpoint *endpoint.Endpoint
-	change *route53.Change
+	change   *route53.Change
 }
 
 // NewAWSProvider initializes a new AWS Route53 based Provider.
@@ -408,7 +408,7 @@ func newChange(action string, endpoint *endpoint.Endpoint) *endpointChange {
 
 	return &endpointChange{
 		endpoint: endpoint,
-		change: change,
+		change:   change,
 	}
 }
 
@@ -459,13 +459,13 @@ func canonicalHostedZone(hostname string) string {
 	return ""
 }
 
-func getZoneFiltersFromProviderAnnotations(endpoint *endpoint.Endpoint) ([]func(zone *route53.HostedZone) (bool)) {
-	var zoneFilters []func(zone *route53.HostedZone) (bool)
+func getZoneFiltersFromProviderAnnotations(endpoint *endpoint.Endpoint) []func(zone *route53.HostedZone) bool {
+	var zoneFilters []func(zone *route53.HostedZone) bool
 
 	for key, value := range endpoint.ProviderAnnotations {
 		if key == AWSZoneTypeAnnotation {
 			zoneTypeFilter := NewZoneTypeFilter(value)
-			zoneFilters = append(zoneFilters, func(zone *route53.HostedZone) bool{
+			zoneFilters = append(zoneFilters, func(zone *route53.HostedZone) bool {
 				return zoneTypeFilter.Match(zone)
 			})
 		}
@@ -474,7 +474,7 @@ func getZoneFiltersFromProviderAnnotations(endpoint *endpoint.Endpoint) ([]func(
 	return zoneFilters
 }
 
-func filterZones(zones []*route53.HostedZone, filters []func(zone *route53.HostedZone) (bool)) []*route53.HostedZone {
+func filterZones(zones []*route53.HostedZone, filters []func(zone *route53.HostedZone) bool) []*route53.HostedZone {
 	var newZones []*route53.HostedZone
 
 	for _, zone := range zones {
