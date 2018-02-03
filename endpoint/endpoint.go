@@ -71,6 +71,7 @@ func NewEndpointWithTTL(dnsName, target, recordType string, ttl TTL) *Endpoint {
 	}
 }
 
+// NewEndpointFrom initialization method which takes providerAnnotations from original endpoint
 func NewEndpointFrom(fromEndpoint *Endpoint, dnsName, target, recordType string) *Endpoint {
 	endpoint := NewEndpoint(dnsName, target, recordType)
 	endpoint.ProviderAnnotations = fromEndpoint.ProviderAnnotations

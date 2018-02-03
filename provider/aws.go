@@ -35,6 +35,7 @@ const (
 	recordTTL            = 300
 	maxChangeCount       = 4000
 
+	// AWSZoneTypeAnnotation defines the annotation to set filter on zone type
 	AWSZoneTypeAnnotation = "external-dns.alpha.kubernetes.io/aws-zone-type"
 )
 
