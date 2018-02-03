@@ -23,6 +23,7 @@ import (
 	"strconv"
 
 	"github.com/kubernetes-incubator/external-dns/endpoint"
+	"github.com/kubernetes-incubator/external-dns/provider"
 )
 
 const (
@@ -41,6 +42,12 @@ const (
 const (
 	ttlMinimum = 1
 	ttlMaximum = math.MaxUint32
+)
+
+var (
+	providerAnnotationKeys = map[string]bool{
+		provider.AWSZoneTypeAnnotation: true,
+	}
 )
 
 // Source defines the interface Endpoint sources should implement.
@@ -62,6 +69,18 @@ func getTTLFromAnnotations(annotations map[string]string) (endpoint.TTL, error) 
 		return ttlNotConfigured, fmt.Errorf("TTL value must be between [%d, %d]", ttlMinimum, ttlMaximum)
 	}
 	return endpoint.TTL(ttlValue), nil
+}
+
+func getProviderAnnotations(annotations map[string]string) (map[string]string) {
+	providerAnnotations := map[string]string{}
+
+	for annotationKey, annotationValue := range annotations {
+		if providerAnnotationKeys[annotationKey] {
+			providerAnnotations[annotationKey] = annotationValue
+		}
+	}
+
+	return providerAnnotations
 }
 
 // suitableType returns the DNS resource record type suitable for the target.

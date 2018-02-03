@@ -50,6 +50,8 @@ type Endpoint struct {
 	RecordTTL TTL
 	// Labels stores labels defined for the Endpoint
 	Labels Labels
+	// Stores additional anotations for provider-specific usage
+	ProviderAnnotations map[string]string
 }
 
 // NewEndpoint initialization method to be used to create an endpoint
@@ -65,6 +67,7 @@ func NewEndpointWithTTL(dnsName, target, recordType string, ttl TTL) *Endpoint {
 		RecordType: recordType,
 		Labels:     NewLabels(),
 		RecordTTL:  ttl,
+		ProviderAnnotations: map[string]string{},
 	}
 }
 

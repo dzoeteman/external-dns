@@ -92,3 +92,29 @@ func TestSuitableType(t *testing.T) {
 		}
 	}
 }
+
+func TestGetProviderAnnotations(t *testing.T) {
+	providerAnnotationKeys = map[string]bool{"test": true, "test2": true}
+
+	for _, tc := range []struct {
+		title               string
+		annotations         map[string]string
+		expectedAnnotations map[string]string
+	}{
+		{
+			title:               "Provider annotation",
+			annotations:         map[string]string{"bar": "foo", "test2": "testing", "foo": "bar"},
+			expectedAnnotations: map[string]string{"test2": "testing"},
+		},
+		{
+			title:               "No provider annotation",
+			annotations:         map[string]string{"foo": "bar"},
+			expectedAnnotations: map[string]string{},
+		},
+	} {
+		t.Run(tc.title, func(t *testing.T) {
+			annotations := getProviderAnnotations(tc.annotations)
+			assert.Equal(t, tc.expectedAnnotations, annotations)
+		})
+	}
+}

@@ -34,6 +34,8 @@ const (
 	evaluateTargetHealth = true
 	recordTTL            = 300
 	maxChangeCount       = 4000
+
+	AWSZoneTypeAnnotation = "external-dns.alpha.kubernetes.io/aws-zone-type"
 )
 
 var (

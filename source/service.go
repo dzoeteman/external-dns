@@ -138,7 +138,10 @@ func (sc *serviceSource) extractHeadlessEndpoint(svc *v1.Service, hostname strin
 		log.Debugf("Generating matching endpoint %s with HostIP %s", headlessDomain, v.Status.HostIP)
 		// To reduce traffice on the DNS API only add record for running Pods. Good Idea?
 		if v.Status.Phase == v1.PodRunning {
-			endpoints = append(endpoints, endpoint.NewEndpoint(headlessDomain, v.Status.HostIP, endpoint.RecordTypeA))
+			newEndpoint := endpoint.NewEndpoint(headlessDomain, v.Status.HostIP, endpoint.RecordTypeA)
+			newEndpoint.ProviderAnnotations = getProviderAnnotations(svc.Annotations)
+
+			endpoints = append(endpoints, newEndpoint)
 		} else {
 			log.Debugf("Pod %s is not in running phase", v.Spec.Hostname)
 		}
@@ -246,7 +249,10 @@ func extractServiceIps(svc *v1.Service, hostname string) []*endpoint.Endpoint {
 		return []*endpoint.Endpoint{}
 	}
 
-	return []*endpoint.Endpoint{endpoint.NewEndpointWithTTL(hostname, svc.Spec.ClusterIP, endpoint.RecordTypeA, ttl)}
+	serviceEndpoint := endpoint.NewEndpointWithTTL(hostname, svc.Spec.ClusterIP, endpoint.RecordTypeA, ttl)
+	serviceEndpoint.ProviderAnnotations = getProviderAnnotations(svc.Annotations)
+
+	return []*endpoint.Endpoint{serviceEndpoint}
 }
 
 func extractLoadBalancerEndpoints(svc *v1.Service, hostname string) []*endpoint.Endpoint {
@@ -260,10 +266,16 @@ func extractLoadBalancerEndpoints(svc *v1.Service, hostname string) []*endpoint.
 	for _, lb := range svc.Status.LoadBalancer.Ingress {
 		if lb.IP != "" {
 			//TODO(ideahitme): consider retrieving record type from resource annotation instead of empty
-			endpoints = append(endpoints, endpoint.NewEndpointWithTTL(hostname, lb.IP, endpoint.RecordTypeA, ttl))
+			ipEndpoint := endpoint.NewEndpointWithTTL(hostname, lb.IP, endpoint.RecordTypeA, ttl)
+			ipEndpoint.ProviderAnnotations = getProviderAnnotations(svc.Annotations)
+
+			endpoints = append(endpoints, ipEndpoint)
 		}
 		if lb.Hostname != "" {
-			endpoints = append(endpoints, endpoint.NewEndpointWithTTL(hostname, lb.Hostname, endpoint.RecordTypeCNAME, ttl))
+			hostnameEndpoint := endpoint.NewEndpointWithTTL(hostname, lb.Hostname, endpoint.RecordTypeCNAME, ttl)
+			hostnameEndpoint.ProviderAnnotations = getProviderAnnotations(svc.Annotations)
+
+			endpoints = append(endpoints, hostnameEndpoint)
 		}
 	}
 

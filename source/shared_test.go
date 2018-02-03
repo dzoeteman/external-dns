@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/kubernetes-incubator/external-dns/endpoint"
+	"reflect"
 )
 
 // test helper functions
@@ -50,5 +51,9 @@ func validateEndpoint(t *testing.T, endpoint, expected *endpoint.Endpoint) {
 	// if non-empty record type is expected, check that it matches.
 	if expected.RecordType != "" && endpoint.RecordType != expected.RecordType {
 		t.Errorf("expected %s, got %s", expected.RecordType, endpoint.RecordType)
+	}
+
+	if expected.ProviderAnnotations != nil && ! reflect.DeepEqual(endpoint.ProviderAnnotations, expected.ProviderAnnotations) {
+		t.Errorf("expected %s, got %s", expected.ProviderAnnotations, endpoint.ProviderAnnotations)
 	}
 }

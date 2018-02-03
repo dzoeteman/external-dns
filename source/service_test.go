@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/kubernetes-incubator/external-dns/provider"
 )
 
 type ServiceSuite struct {
@@ -752,6 +753,48 @@ func testServiceSourceEndpoints(t *testing.T) {
 			},
 			false,
 		},
+		{
+			"annotated loadbalancer service with IP return an endpoint with provider annotation",
+			"",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeLoadBalancer,
+			"",
+			"",
+			map[string]string{},
+			map[string]string{
+				hostnameAnnotationKey: "foo.example.org.",
+				provider.AWSZoneTypeAnnotation: "private",
+			},
+			"",
+			[]string{"1.2.3.4"},
+			[]*endpoint.Endpoint{
+				{DNSName: "foo.example.org", Target: "1.2.3.4", ProviderAnnotations: map[string]string{provider.AWSZoneTypeAnnotation: "private"}},
+			},
+			false,
+		},
+		{
+			"annotated loadbalancer service with hostname return an endpoint with provider annotation",
+			"",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeLoadBalancer,
+			"",
+			"",
+			map[string]string{},
+			map[string]string{
+				hostnameAnnotationKey: "foo.example.org.",
+				provider.AWSZoneTypeAnnotation: "private",
+			},
+			"",
+			[]string{"lb.example.com"}, // Kubernetes omits the trailing dot
+			[]*endpoint.Endpoint{
+				{DNSName: "foo.example.org", Target: "lb.example.com", ProviderAnnotations: map[string]string{provider.AWSZoneTypeAnnotation: "private"}},
+			},
+			false,
+		},
 	} {
 		t.Run(tc.title, func(t *testing.T) {
 			// Create a Kubernetes testing client
@@ -869,7 +912,7 @@ func TestClusterIpServices(t *testing.T) {
 			false,
 		},
 		{
-			"Headless services do not generate endpoints",
+			"annotated ClusterIp services return an endpoint with provider annotations",
 			"",
 			"",
 			"testing",
@@ -878,10 +921,15 @@ func TestClusterIpServices(t *testing.T) {
 			"",
 			"",
 			map[string]string{},
-			map[string]string{},
-			v1.ClusterIPNone,
+			map[string]string{
+				hostnameAnnotationKey: "foo.example.org.",
+				provider.AWSZoneTypeAnnotation: "private",
+			},
+			"1.2.3.4",
 			[]string{},
-			[]*endpoint.Endpoint{},
+			[]*endpoint.Endpoint{
+				{DNSName: "foo.example.org", Target: "1.2.3.4", ProviderAnnotations: map[string]string{provider.AWSZoneTypeAnnotation: "private"}},
+			},
 			false,
 		},
 	} {
@@ -1013,6 +1061,32 @@ func TestHeadlessServices(t *testing.T) {
 			[]v1.PodPhase{v1.PodRunning, v1.PodFailed},
 			[]*endpoint.Endpoint{
 				{DNSName: "foo-0.service.example.org", Target: "1.1.1.1"},
+			},
+			false,
+		},
+		{
+			"annotated Headless services return endpoints with provider annotations",
+			"",
+			"testing",
+			"foo",
+			v1.ServiceTypeClusterIP,
+			"",
+			"",
+			map[string]string{"component": "foo"},
+			map[string]string{
+				hostnameAnnotationKey: "service.example.org",
+				provider.AWSZoneTypeAnnotation: "private",
+			},
+			v1.ClusterIPNone,
+			"1.1.1.1",
+			map[string]string{
+				"component": "foo",
+			},
+			[]string{},
+			[]string{"foo"},
+			[]v1.PodPhase{v1.PodRunning, v1.PodRunning},
+			[]*endpoint.Endpoint{
+				{DNSName: "foo.service.example.org", Target: "1.1.1.1", ProviderAnnotations: map[string]string{provider.AWSZoneTypeAnnotation: "private"}},
 			},
 			false,
 		},
