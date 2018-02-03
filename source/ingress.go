@@ -104,6 +104,10 @@ func (sc *ingressSource) Endpoints() ([]*endpoint.Endpoint, error) {
 			continue
 		}
 
+		for _, e := range ingEndpoints {
+			e.ProviderAnnotations = getProviderAnnotations(ing.Annotations)
+		}
+
 		log.Debugf("Endpoints generated from ingress: %s/%s: %v", ing.Namespace, ing.Name, ingEndpoints)
 		sc.setResourceLabel(ing, ingEndpoints)
 		endpoints = append(endpoints, ingEndpoints...)

@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/kubernetes-incubator/external-dns/provider"
 )
 
 // Validates that ingressSource is a Source
@@ -621,6 +622,26 @@ func testIngressEndpoints(t *testing.T) {
 				},
 			},
 			fqdnTemplate: "{{.Name}}.ext-dns.test.com",
+		},
+		{
+			title:           "ingress with provider annotation",
+			targetNamespace: "",
+			ingressItems: []fakeIngress{
+				{
+					name:      "fake1",
+					namespace: namespace,
+					dnsnames:  []string{"example.org"},
+					ips:       []string{"8.8.8.8"},
+					annotations: map[string]string{provider.AWSZoneTypeAnnotation: "private", "foo": "bar"},
+				},
+			},
+			expected: []*endpoint.Endpoint{
+				{
+					DNSName: "example.org",
+					Target:  "8.8.8.8",
+					ProviderAnnotations: map[string]string{provider.AWSZoneTypeAnnotation: "private"},
+				},
+			},
 		},
 	} {
 		t.Run(ti.title, func(t *testing.T) {
