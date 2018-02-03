@@ -79,6 +79,11 @@ type AWSProvider struct {
 	zoneTypeFilter ZoneTypeFilter
 }
 
+type endpointChange struct {
+	endpoint *endpoint.Endpoint
+	change *route53.Change
+}
+
 // NewAWSProvider initializes a new AWS Route53 based Provider.
 func NewAWSProvider(domainFilter DomainFilter, zoneIDFilter ZoneIDFilter, zoneTypeFilter ZoneTypeFilter, dryRun bool) (*AWSProvider, error) {
 	config := aws.NewConfig()
@@ -219,7 +224,7 @@ func (p *AWSProvider) DeleteRecords(endpoints []*endpoint.Endpoint) error {
 
 // ApplyChanges applies a given set of changes in a given zone.
 func (p *AWSProvider) ApplyChanges(changes *plan.Changes) error {
-	combinedChanges := make([]*route53.Change, 0, len(changes.Create)+len(changes.UpdateNew)+len(changes.Delete))
+	combinedChanges := make([]*endpointChange, 0, len(changes.Create)+len(changes.UpdateNew)+len(changes.Delete))
 
 	combinedChanges = append(combinedChanges, newChanges(route53.ChangeActionCreate, changes.Create)...)
 	combinedChanges = append(combinedChanges, newChanges(route53.ChangeActionUpsert, changes.UpdateNew)...)
@@ -229,7 +234,7 @@ func (p *AWSProvider) ApplyChanges(changes *plan.Changes) error {
 }
 
 // submitChanges takes a zone and a collection of Changes and sends them as a single transaction.
-func (p *AWSProvider) submitChanges(changes []*route53.Change) error {
+func (p *AWSProvider) submitChanges(changes []*endpointChange) error {
 	// return early if there is nothing to change
 	if len(changes) == 0 {
 		log.Info("All records are already up to date")
@@ -323,7 +328,7 @@ func sortChangesByActionNameType(cs []*route53.Change) []*route53.Change {
 }
 
 // changesByZone separates a multi-zone change into a single change per zone.
-func changesByZone(zones map[string]*route53.HostedZone, changeSet []*route53.Change) map[string][]*route53.Change {
+func changesByZone(zones map[string]*route53.HostedZone, changeSet []*endpointChange) map[string][]*route53.Change {
 	changes := make(map[string][]*route53.Change)
 
 	for _, z := range zones {
@@ -331,15 +336,17 @@ func changesByZone(zones map[string]*route53.HostedZone, changeSet []*route53.Ch
 	}
 
 	for _, c := range changeSet {
-		hostname := ensureTrailingDot(aws.StringValue(c.ResourceRecordSet.Name))
+		hostname := ensureTrailingDot(aws.StringValue(c.change.ResourceRecordSet.Name))
 
 		zones := suitableZones(hostname, zones)
+		zones = filterZones(zones, getZoneFiltersFromProviderAnnotations(c.endpoint))
+
 		if len(zones) == 0 {
-			log.Debugf("Skipping record %s because no hosted zone matching record DNS Name was detected ", c.String())
+			log.Debugf("Skipping record %s because no hosted zone matching record DNS Name was detected ", c.change.String())
 			continue
 		}
 		for _, z := range zones {
-			changes[aws.StringValue(z.Id)] = append(changes[aws.StringValue(z.Id)], c)
+			changes[aws.StringValue(z.Id)] = append(changes[aws.StringValue(z.Id)], c.change)
 			log.Debugf("Adding %s to zone %s [Id: %s]", hostname, aws.StringValue(z.Name), aws.StringValue(z.Id))
 		}
 	}
@@ -355,8 +362,8 @@ func changesByZone(zones map[string]*route53.HostedZone, changeSet []*route53.Ch
 }
 
 // newChanges returns a collection of Changes based on the given records and action.
-func newChanges(action string, endpoints []*endpoint.Endpoint) []*route53.Change {
-	changes := make([]*route53.Change, 0, len(endpoints))
+func newChanges(action string, endpoints []*endpoint.Endpoint) []*endpointChange {
+	changes := make([]*endpointChange, 0, len(endpoints))
 
 	for _, endpoint := range endpoints {
 		changes = append(changes, newChange(action, endpoint))
@@ -368,7 +375,7 @@ func newChanges(action string, endpoints []*endpoint.Endpoint) []*route53.Change
 // newChange returns a Change of the given record by the given action, e.g.
 // action=ChangeActionCreate returns a change for creation of the record and
 // action=ChangeActionDelete returns a change for deletion of the record.
-func newChange(action string, endpoint *endpoint.Endpoint) *route53.Change {
+func newChange(action string, endpoint *endpoint.Endpoint) *endpointChange {
 	change := &route53.Change{
 		Action: aws.String(action),
 		ResourceRecordSet: &route53.ResourceRecordSet{
@@ -397,7 +404,10 @@ func newChange(action string, endpoint *endpoint.Endpoint) *route53.Change {
 		}
 	}
 
-	return change
+	return &endpointChange{
+		endpoint: endpoint,
+		change: change,
+	}
 }
 
 // suitableZones returns all suitable private zones and the most suitable public zone
@@ -445,4 +455,38 @@ func canonicalHostedZone(hostname string) string {
 	}
 
 	return ""
+}
+
+func getZoneFiltersFromProviderAnnotations(endpoint *endpoint.Endpoint) ([]func(zone *route53.HostedZone) (bool)) {
+	var zoneFilters []func(zone *route53.HostedZone) (bool)
+
+	for key, value := range endpoint.ProviderAnnotations {
+		if key == AWSZoneTypeAnnotation {
+			zoneTypeFilter := NewZoneTypeFilter(value)
+			zoneFilters = append(zoneFilters, func(zone *route53.HostedZone) bool{
+				return zoneTypeFilter.Match(zone)
+			})
+		}
+	}
+
+	return zoneFilters
+}
+
+func filterZones(zones []*route53.HostedZone, filters []func(zone *route53.HostedZone) (bool)) []*route53.HostedZone {
+	var newZones []*route53.HostedZone
+
+	for _, zone := range zones {
+		ok := true
+		for _, filter := range filters {
+			if !filter(zone) {
+				ok = false
+			}
+		}
+
+		if ok {
+			newZones = append(newZones, zone)
+		}
+	}
+
+	return newZones
 }

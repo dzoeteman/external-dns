@@ -418,29 +418,62 @@ func TestAWSApplyChangesDryRun(t *testing.T) {
 }
 
 func TestAWSChangesByZones(t *testing.T) {
-	changes := []*route53.Change{
+	changes := []*endpointChange{
 		{
-			Action: aws.String(route53.ChangeActionCreate),
-			ResourceRecordSet: &route53.ResourceRecordSet{
-				Name: aws.String("qux.foo.example.org"), TTL: aws.Int64(1),
+			endpoint: &endpoint.Endpoint{
+				ProviderAnnotations: map[string]string{},
+			},
+			change: &route53.Change{
+				Action: aws.String(route53.ChangeActionCreate),
+				ResourceRecordSet: &route53.ResourceRecordSet{
+					Name: aws.String("qux.foo.example.org"), TTL: aws.Int64(1),
+				},
 			},
 		},
 		{
-			Action: aws.String(route53.ChangeActionCreate),
-			ResourceRecordSet: &route53.ResourceRecordSet{
-				Name: aws.String("qux.bar.example.org"), TTL: aws.Int64(2),
+			endpoint: &endpoint.Endpoint{
+				ProviderAnnotations: map[string]string{},
+			},
+			change: &route53.Change{
+				Action: aws.String(route53.ChangeActionCreate),
+				ResourceRecordSet: &route53.ResourceRecordSet{
+					Name: aws.String("qux.bar.example.org"), TTL: aws.Int64(2),
+				},
 			},
 		},
 		{
-			Action: aws.String(route53.ChangeActionDelete),
-			ResourceRecordSet: &route53.ResourceRecordSet{
-				Name: aws.String("wambo.foo.example.org"), TTL: aws.Int64(10),
+			endpoint: &endpoint.Endpoint{
+				ProviderAnnotations: map[string]string{},
+			},
+			change: &route53.Change{
+				Action: aws.String(route53.ChangeActionDelete),
+				ResourceRecordSet: &route53.ResourceRecordSet{
+					Name: aws.String("wambo.foo.example.org"), TTL: aws.Int64(10),
+				},
 			},
 		},
 		{
-			Action: aws.String(route53.ChangeActionDelete),
-			ResourceRecordSet: &route53.ResourceRecordSet{
-				Name: aws.String("wambo.bar.example.org"), TTL: aws.Int64(20),
+			endpoint: &endpoint.Endpoint{
+				ProviderAnnotations: map[string]string{},
+			},
+			change: &route53.Change{
+				Action: aws.String(route53.ChangeActionDelete),
+				ResourceRecordSet: &route53.ResourceRecordSet{
+					Name: aws.String("wambo.bar.example.org"), TTL: aws.Int64(20),
+				},
+			},
+		},
+		{
+			endpoint: &endpoint.Endpoint{
+				ProviderAnnotations: map[string]string{
+					AWSZoneTypeAnnotation: "private",
+				},
+			},
+			change: &route53.Change{
+				Action: aws.String(route53.ChangeActionCreate),
+				ResourceRecordSet: &route53.ResourceRecordSet{
+					Name: aws.String("priv.bar.example.org"), TTL: aws.Int64(2),
+				},
 			},
 		},
 	}
@@ -511,6 +544,12 @@ func TestAWSChangesByZones(t *testing.T) {
 				Name: aws.String("wambo.bar.example.org"), TTL: aws.Int64(20),
 			},
 		},
+		{
+			Action: aws.String(route53.ChangeActionCreate),
+			ResourceRecordSet: &route53.ResourceRecordSet{
+				Name: aws.String("priv.bar.example.org"), TTL: aws.Int64(2),
+			},
+		},
 	})
 }
 
@@ -529,7 +568,7 @@ func TestAWSsubmitChanges(t *testing.T) {
 		}
 	}
 
-	cs := make([]*route53.Change, 0, len(endpoints))
+	cs := make([]*endpointChange, 0, len(endpoints))
 	cs = append(cs, newChanges(route53.ChangeActionCreate, endpoints)...)
 
 	require.NoError(t, provider.submitChanges(cs))
@@ -744,6 +783,52 @@ func TestAWSSuitableZones(t *testing.T) {
 		sort.Slice(suitableZones, func(i, j int) bool { return *suitableZones[i].Id < *suitableZones[j].Id })
 		sort.Slice(tc.expected, func(i, j int) bool { return *tc.expected[i].Id < *tc.expected[j].Id })
 		assert.Equal(t, tc.expected, suitableZones)
+	}
+}
+
+func TestGetZoneFiltersFromProviderAnnotations(t *testing.T) {
+	for _, tc := range []struct {
+		endpoint *endpoint.Endpoint
+		expected int
+	}{
+		{
+			endpoint: &endpoint.Endpoint{
+				ProviderAnnotations: map[string]string{AWSZoneTypeAnnotation: "private"},
+			},
+			expected: 1,
+		},
+		{
+			endpoint: &endpoint.Endpoint{
+				ProviderAnnotations: map[string]string{},
+			},
+			expected: 0,
+		},
+	} {
+		filters := getZoneFiltersFromProviderAnnotations(tc.endpoint)
+		assert.Equal(t, tc.expected, len(filters))
+	}
+}
+
+func TestFilterZones(t *testing.T) {
+	zones := map[string]*route53.HostedZone{
+		// Public domain
+		"example-org": {Id: aws.String("example-org"), Name: aws.String("example.org.")},
+		// Private domain
+		"example-org-private": {Id: aws.String("example-org-private"), Name: aws.String("example.org."), Config: &route53.HostedZoneConfig{PrivateZone: aws.Bool(true)}},
+	}
+
+	for _, tc := range []struct {
+		filters  []func(zone *route53.HostedZone) (bool)
+		expected []*route53.HostedZone
+	}{
+		{[]func(zone *route53.HostedZone) (bool){}, []*route53.HostedZone{zones["example-org"], zones["example-org-private"]}},
+		{[]func(zone *route53.HostedZone) (bool){func(zone *route53.HostedZone) bool {
+			filter := NewZoneTypeFilter("private")
+			return filter.Match(zone)
+		}}, []*route53.HostedZone{zones["example-org-private"]}},
+	} {
+		filteredZones := filterZones([]*route53.HostedZone{zones["example-org"], zones["example-org-private"]}, tc.filters)
+		assert.Equal(t, tc.expected, filteredZones)
 	}
 }
 
