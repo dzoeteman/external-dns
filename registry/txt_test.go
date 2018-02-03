@@ -36,6 +36,7 @@ func TestTXTRegistry(t *testing.T) {
 	t.Run("TestNewTXTRegistry", testTXTRegistryNew)
 	t.Run("TestRecords", testTXTRegistryRecords)
 	t.Run("TestApplyChanges", testTXTRegistryApplyChanges)
+	t.Run("TestAddTxtRecordsFromEndpoint", testAddTxtRecordsFromEndpoint)
 }
 
 func testTXTRegistryNew(t *testing.T) {
@@ -345,6 +346,26 @@ func testTXTRegistryApplyChangesNoPrefix(t *testing.T) {
 	}
 	err := r.ApplyChanges(changes)
 	require.NoError(t, err)
+}
+
+func testAddTxtRecordsFromEndpoint(t *testing.T){
+	p := provider.NewInMemoryProvider()
+	r, _ := NewTXTRegistry(p, "", "owner")
+
+	privateEndpoint := newEndpointWithOwner("foo.test-zone.example.org", "foo.loadbalancer.com", endpoint.RecordTypeCNAME, "")
+	privateEndpoint.ProviderAnnotations = map[string]string{"foo":"bar"}
+
+	changes := &plan.Changes{
+		Create: []*endpoint.Endpoint{
+			privateEndpoint,
+			newEndpointWithOwner("bar.test-zone.example.org", "my-domain.com", endpoint.RecordTypeCNAME, ""),
+		},
+	}
+
+	r.addTxtRecords(changes)
+
+	assert.Equal(t, changes.Create[0].ProviderAnnotations, changes.Create[2].ProviderAnnotations)
+	assert.Equal(t, changes.Create[1].ProviderAnnotations, changes.Create[3].ProviderAnnotations)
 }
 
 /**

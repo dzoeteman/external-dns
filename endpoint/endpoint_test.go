@@ -18,6 +18,7 @@ package endpoint
 
 import (
 	"testing"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewEndpoint(t *testing.T) {
@@ -33,4 +34,14 @@ func TestNewEndpoint(t *testing.T) {
 	if w.DNSName != "example.org" || w.Target != "load-balancer.com" || w.RecordType != "" {
 		t.Error("endpoint is not initialized correctly")
 	}
+}
+
+func TestNewEndpointFrom(t *testing.T) {
+	e1 := NewEndpoint("example.org", "foo.com", "CNAME")
+	e1.ProviderAnnotations = map[string]string{
+		"test": "foo",
+	}
+
+	e2 := NewEndpointFrom(e1, "example.org", "foo.com", "TXT")
+	assert.Equal(t, e1.ProviderAnnotations, e2.ProviderAnnotations)
 }

@@ -71,6 +71,13 @@ func NewEndpointWithTTL(dnsName, target, recordType string, ttl TTL) *Endpoint {
 	}
 }
 
+func NewEndpointFrom(fromEndpoint *Endpoint, dnsName, target, recordType string) *Endpoint {
+	endpoint := NewEndpoint(dnsName, target, recordType)
+	endpoint.ProviderAnnotations = fromEndpoint.ProviderAnnotations
+
+	return endpoint
+}
+
 func (e *Endpoint) String() string {
 	return fmt.Sprintf("%s %d IN %s %s", e.DNSName, e.RecordTTL, e.RecordType, e.Target)
 }
